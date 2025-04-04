@@ -43,23 +43,26 @@ for n = 1 : n_frames
     r = r(1 : p(n)+1);   % r(0) and first p values
 
     % LPC coefficients using Levinson-Durbin recursion
-    [a, e, k] = levinson(r, p(n));
+    [a, ~, ~] = levinson(r, p(n));
     lpc_coeffs(n, 1:p(n)) = a(2:end);   % LPC coefficients, excluding 1
-    gain(n) = sqrt(e);                  % gain (square root of residual energy)
     
+    % ----------- PEZZOLI -----------
     % Alternative solution use lpc
     % a(ii, 1:orderLPC+1) = lpc(sn.*win, orderLPC);
 
     % Avoid NaNs
-    
-    % Compute prediction error
-    pred_frame = filter(a, 1, frame);   % whitening filter
-    residuals(n, :) = pred_frame;
-    
+    % ----------- PEZZOLI -----------
 
-    % Compute MSE of the frame
-    
+    % prediction error - whitening filtering
+    frame_errors(n, :) = filter(a, 1, frame);
 
+    % MSE of frame - excitation gain
+    gains(n) = mean(frame_errors(n, :) .^ 2);
+    
+    % pitch period computation for voiced frames
+    if (is_voiced(n))
+        pitch_periods(n) = pitchdetectionamdf(frame_errors(n, :));
+    end
     
     % ----------- PEZZOLI -----------
     % Plot the Magnitude of the signal spectrum, and on the same graph, the
@@ -115,7 +118,6 @@ for n = 1 : n_frames
 end
 
 %% Save encoded data
-save('lpc10_encoded.mat', 'lpc_coeffs', 'gain', 'pitch_periods', 'is_voiced');
 save('lpc10_encoded.mat', 'lpc_coeffs', 'gains', 'pitch_periods', 'is_voiced');
 disp("Encoding complete");
 disp("================================");
