@@ -57,7 +57,7 @@ for n = 1 : n_frames
     frame_errors(n, :) = filter(a, 1, frame);
 
     % MSE of frame - excitation gain
-    gains(n) = mean(frame_errors(n, :) .^ 2);
+    gains(n) = sqrt(mean(frame_errors(n, :) .^ 2));
     
     % pitch period computation for voiced frames
     if (is_voiced(n))
