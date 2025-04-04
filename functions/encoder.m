@@ -11,25 +11,23 @@ clc
 b = [1, -0.975];    % denominator coefficients
 x = filter(b, 1, x);
 
-% LPC parameters
-M = 256;                % segment length (windows)
-lpc_orders = [4, 10];   % LPC orders (unvoiced and voiced)
-
 % hamming window (length=256, hop=256)
+M = 256;                % segment length (windows)
 win_len = M;
 hop_size = M;
 win = hamming(win_len);
 n_frames = floor((length(x) - win_len)/hop_size) + 1;
 
-% voiced vs unvoiced frame
-[is_voiced, zcr] = voicedframedetection(x, win, hop_size);
-p = lpc_orders(is_voiced + 1).';
-
-% paramters declaration
+% LPC model parameters
+lpc_orders = [4, 10];   % LPC orders (unvoiced and voiced)
 lpc_coeffs = zeros(n_frames, lpc_orders(2));
 pitch_periods = zeros(n_frames, 1);
-gain = zeros(n_frames, 1);
-residuals = zeros(n_frames, win_len);
+gains = zeros(n_frames, 1);
+frame_errors = zeros(n_frames, win_len);
+
+% voiced vs unvoiced frames
+[is_voiced, zcr] = voicedframedetection(x, win, hop_size);
+p = lpc_orders(is_voiced + 1).';
 
 %% Estimate LPC coefficients
 disp("================================");
@@ -63,6 +61,7 @@ for n = 1 : n_frames
     
 
     
+    % ----------- PEZZOLI -----------
     % Plot the Magnitude of the signal spectrum, and on the same graph, the
     % the LPC spectrum estimation (remember the definition of |E(omega)|)
     if doPlot
@@ -112,9 +111,11 @@ for n = 1 : n_frames
         % Compute the gain for unvoiced sounds
         
     end
+    % ----------- PEZZOLI -----------
 end
 
 %% Save encoded data
 save('lpc10_encoded.mat', 'lpc_coeffs', 'gain', 'pitch_periods', 'is_voiced');
+save('lpc10_encoded.mat', 'lpc_coeffs', 'gains', 'pitch_periods', 'is_voiced');
 disp("Encoding complete");
 disp("================================");
