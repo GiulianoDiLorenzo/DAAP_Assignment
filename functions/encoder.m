@@ -1,10 +1,10 @@
-%% LPC-encode
-%
+% LPC-encode
+% 
 % DAAP course 2025
 % Mirco Pezzoli
-% clear
-close all
-clc
+% 
+% The following script computes the LPC coefficients
+% for each frame of an audio file with sr=8000
 
 %% Define parameters
 % apply a pre-emphasis HPF (freqz(b,1) to plot transfer function)
@@ -28,6 +28,11 @@ frame_errors = zeros(n_frames, win_len);
 % voiced vs unvoiced frames
 [is_voiced, zcr] = voicedframedetection(x, win, hop_size);
 p = lpc_orders(is_voiced + 1).';
+
+% % customized plots
+% doPlot = zeros(n_frames, 1);
+% doPlot(80) = 1;
+% doPlot(42) = 1;
 
 %% Estimate LPC coefficients
 disp("================================");
@@ -61,63 +66,73 @@ for n = 1 : n_frames
     
     % pitch period computation for voiced frames
     if (is_voiced(n))
-        pitch_periods(n) = pitchdetectionamdf(frame_errors(n, :));
-    end
-    
-    % ----------- PEZZOLI -----------
-    % Plot the Magnitude of the signal spectrum, and on the same graph, the
-    % the LPC spectrum estimation (remember the definition of |E(omega)|)
-    if doPlot
-        
-        % Compute the shaping filter H using freqz function
-         
-        %frequency axis
-        % Compute the DFT of the original signal
-        %FFT of the signal
-        
+        pitch_periods(n) = pitchdetectionamdf(frame_errors(n, :).');
 
-        figure(3), clf
-        subplot(3,1,1)
-        %Plot of the FFT of the original signal
-        hold on;
-        title();
-        xlabel();
-        %Spectral matching of the filter
-        hold off
-
-        subplot(3,1,2), hold on
-       
-       % plot prediction error (time domain)
-        xlabel('Time [ms]');
-        title()
-        % Plot the prediction error magnitude spectrum
-        subplot(3,1,3)
-        %Plot prediction error (frequency domain)
-        title ('');
-        
-    end
-    % Pitch estimation for voiced signals
-    if voicedIdx(n) == 1
-        
+        % % ----------- PEZZOLI -----------
         % Optionally low pass the error
-        
+        % % ----------- PEZZOLI -----------
     end
 
-    % Plot the predition error e in time
-    if voicedIdx(n) == 1
-        % Compute the gain for a pitched sound
-        lim = floor(winLen./pitch(n)).*pitch(n);
-        power(n) = (1/lim).*(e(1:lim)'*e(1:lim));
-        gains(n) = sqrt(power(n)*pitch(n));
+    % % ----------- PEZZOLI -----------
+    % if voicedIdx(n) == 1
+    %     % Compute the gain for a pitched sound
+    %     lim = floor(winLen./pitch(n)).*pitch(n);
+    %     power(n) = (1/lim).*(e(1:lim)'*e(1:lim));
+    %     gains(n) = sqrt(power(n)*pitch(n));
+    % 
+    % else
+    %     % Compute the gain for unvoiced sounds
+    % 
+    % end
+    % % ----------- PEZZOLI -----------
+    
+    % plots for spectra, error in time and frequency
+    if doPlot(n)
+        
+        [H, w] = freqz(1, a);   % shaping filter and w axis
+        S = fft(frame);         % frame spectrum
+        f = (0:M-1)*(fs/M);     % frequency axis (up to fs)
 
-    else
-        % Compute the gain for unvoiced sounds
+        figure()
+        sgtitle("File " + filename_short + ".mp3 - Frame n." + n + " (is voiced = " + is_voiced(n) +")")
+
+        % spectra comparison
+        subplot(3,1,1)
+        plot(f(1:M/2), db(abs(S(1:M/2))))
+        hold on
+        plot(w./(2*pi) * fs, db(abs(H)))
+        hold off
+        title("Original spectrum $S$ and LPC approximation $H$")
+        xlabel("$f$ [Hz]")
+        ylabel("$|S|$, $|H|$ [dB]")
+        grid on
+        xlim([0 fs/2])
+        legend("Original spectrum", "Shaping filter approximation")
+
+        % error in time
+        t = (0 : 1/fs : 1/fs*(M-1))*10e3;   % [ms] time axis
+        subplot(3,1,2)
+        plot(t, frame_errors(n, :))
+        title("Prediction error - time domain")
+        xlabel("$t$ [ms]")
+        ylabel("$e$")
+        grid on
+        xlim([min(t) max(t)])
+
+        % error in frequency
+        E = fft(frame_errors(n, :));    % error spectrum
+        subplot(3,1,3)
+        plot(f(1:M/2), db(abs(E(1:M/2))))
+        title("Prediction error - frequency domain")
+        xlabel("$f$ [Hz]")
+        ylabel("$|E|$ [dB]")
+        grid on
+        xlim([0 fs/2])
         
     end
-    % ----------- PEZZOLI -----------
 end
 
 %% Save encoded data
-save('lpc10_encoded.mat', 'lpc_coeffs', 'gains', 'pitch_periods', 'is_voiced');
+save("lpc10_" + filename_short + ".mat", 'lpc_coeffs', 'gains', 'pitch_periods', 'is_voiced');
 disp("Encoding complete");
 disp("================================");
