@@ -30,9 +30,9 @@ frame_errors = zeros(n_frames, win_len);
 p = lpc_orders(is_voiced + 1).';
 
 % % customized plots
-% doPlot = zeros(n_frames, 1);
-% doPlot(80) = 1;
-% doPlot(42) = 1;
+doPlot = zeros(n_frames, 1);
+doPlot(80) = 1;
+doPlot(42) = 1;
 
 %% Estimate LPC coefficients
 disp("================================");
@@ -72,6 +72,8 @@ for n = 1 : n_frames
         % Optionally low pass the error
         % % ----------- PEZZOLI -----------
     end
+
+    
 
     % % ----------- PEZZOLI -----------
     % if voicedIdx(n) == 1
@@ -133,6 +135,6 @@ for n = 1 : n_frames
 end
 
 %% Save encoded data
-save("lpc10_" + filename_short + ".mat", 'lpc_coeffs', 'gains', 'pitch_periods', 'is_voiced');
+save("lpc10_encoded.mat", 'lpc_coeffs', 'gains', 'pitch_periods', 'is_voiced','x');
 disp("Encoding complete");
 disp("================================");

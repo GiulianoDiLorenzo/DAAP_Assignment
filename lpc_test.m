@@ -33,6 +33,8 @@ set(groot,  'DefaultFigureWindowStyle', 'docked', ...       % all figures as tab
 %% Select an audio file
 % audio file path
 filename = "input/" + input("Choose file name (no extension): ", "s") + ".mp3";
+filename_short = erase(filename, ["input/", ".mp3"]);
+
 disp("================================");
 disp("Reading: " + filename);
 disp("================================");
@@ -43,13 +45,15 @@ fs = 8e3;                       % work with sampling rate 8 KHz
 x = resample(x, fs, sr);        % resampling original audio
 x = x./max(abs(x));             % normalization
 
-% t = [0 : 1/fs : 1/fs*(length(x)-1)].';  % time axis for audio file
-% figure();
-% plot(t,x);
-% title(filename);
+t = [0 : 1/fs : 1/fs*(length(x)-1)].';  % time axis for audio file
+figure();
+plot(t,x);
+title(filename);
 
 %% LPC encoding
 encoder;
 
 %% Choose the audio to be decoded
+decoder;
+
 
