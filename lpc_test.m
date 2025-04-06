@@ -32,25 +32,17 @@ set(groot,  'DefaultFigureWindowStyle', 'docked', ...       % all figures as tab
 
 %% Select an audio file
 % Audio file path
-filename = "input/" + input("Choose file name (no extension): ", "s") + ".mp3";
-filename_short = erase(filename, ["input/", ".mp3"]);
+filename = input("Choose file name (with right extension): ", "s");
 
 disp("================================");
 disp("Reading: " + filename);
 disp("================================");
 
-[x, sr] = audioread(filename);  % read audio file
-x = mean(x, 2);                 % from stereo to mono
+[s, sr] = audioread("input/" + filename);  % read audio file
+s = mean(s, 2);                 % from stereo to mono
 fs = 8e3;                       % work with sampling rate 8 KHz
-x = resample(x, fs, sr);        % resampling original audio
-x = x./max(abs(x));             % normalization
-
-% Plot audio file
-t = [0 : 1/fs : 1/fs*(length(x)-1)].';  % time axis for audio file
-figure()
-plot(t,x)
-title(filename)
-grid on
+s = resample(s, fs, sr);        % resampling original audio
+s = s./max(abs(s));             % normalization
 
 %% LPC encoding
 encoder;
@@ -59,3 +51,14 @@ encoder;
 decoder;
 
 % soundsc(sRec, fs);
+
+% Plot audio file
+t = (0 : length(s)-1) / fs;     % time axis for audio file
+figure()
+plot(t,s)
+title(filename)
+xlabel("$t$ [s]")
+ylabel("$s$")
+xlim([min(t) max(t)])
+ylim([-1 1])
+grid on

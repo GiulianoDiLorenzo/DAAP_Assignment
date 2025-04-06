@@ -20,7 +20,8 @@ function excite = generateexcitationsignal(voicedIdx, gains, pitch, winLen)
         if voicedIdx(n)
             % For voiced frames: generate a pulse train.
             % The pulse period is given by the pitch period (rounded to an integer number of samples).
-            T = round(pitch(n));
+            % T = round(pitch(n));
+            T = pitch(n);
             pulse = zeros(winLen, 1);
             pulse(1:T:winLen) = 1;  % pulses every T samples
             excite(n, :) = gains(n) * pulse.';

@@ -9,37 +9,43 @@
 %% Define parameters
 % Apply a pre-emphasis HPF (freqz(b,1) to plot transfer function)
 b = [1, -0.975];    % denominator coefficients
-x = filter(b, 1, x);
+s = filter(b, 1, s);
 
 % Hamming window (length=256, hop=256)
 M = 256;        % segment length (windows)
 win_len = M;
 hop_size = M;
 win = hamming(win_len);
-n_frames = floor((length(x) - win_len)/hop_size) + 1;
+n_frames = floor((length(s) - win_len)/hop_size) + 1;
 
 % LPC model parameters
-lpc_orders = [4, 10];   % LPC orders (unvoiced and voiced)
-lpc_coeffs = zeros(n_frames, max(lpc_orders));
+lpc_coeffs = zeros(n_frames, 10);
 pitch_periods = zeros(n_frames, 1);
 gains = zeros(n_frames, 1);
 frame_errors = zeros(n_frames, win_len);
+% pred_gain = zeros(n_frames, 1);
 
 % Voiced vs unvoiced frames
-[is_voiced, zcr] = voicedframedetection(x, win, hop_size);
-% p = lpc_orders(is_voiced + 1).';
+[is_voiced, ~] = voicedframedetection(s, win, hop_size);
+
+% Custom plots
+plot_idx = [42, 80];
 
 %% Estimate LPC coefficients
 disp("================================");
-disp("Encoding: " + filename_short + ".mp3");
+disp("Encoding: " + filename);
 
 for n = 1 : n_frames
     % Frame selection and windowing
-    frame = x((n-1)*hop_size + 1 : (n-1)*hop_size + win_len) .* win;
+    frame = s((n-1)*hop_size + 1 : (n-1)*hop_size + win_len) .* win;
 
     % LPC order
-    p = lpc_orders(is_voiced(n) + 1);
-    
+    if is_voiced(n)
+        p = 10;
+    else
+        p = 4;
+    end
+
     % Compute autocorrelation
     r = xcorr(frame, 'biased');  
     r = r(win_len:end);  % only positive lags
@@ -57,56 +63,42 @@ for n = 1 : n_frames
     if any(isnan(A))
         % LPC coefficients not updated
         A = zeros(1, p);
-        
-        % Gain value decreases (or just zero)
-        gains(n) = gains(n-1)/2;
-        % gains(n) = 0;
     else
         % LPC coefficients, excluding 1
         lpc_coeffs(n, 1:p) = -A(2:end);
 
         % Prediction error - whitening filtering
-        frame_errors(n, :) = filter(A, 1, frame);      
-        
-        % MSE of frame - excitation gain
-        gains(n) = sqrt(mean(frame_errors(n, :) .^ 2));
+        frame_errors(n, :) = filter(A, 1, frame);       
 
-        % Pitch period computation for voiced frames
-        if (is_voiced(n))
+        % voiced vs unvoiced frame
+        if is_voiced(n)
+            % Low-pass at 800 Hz for pitched frames
+            frame_errors(n, :) = lowpass(frame_errors(n, :), 800, fs);
+
+            % Pitch and gain computation after LPF
             pitch_periods(n) = pitchdetectionamdf(frame_errors(n, :).');
-    
-            % % ----------- PEZZOLI -----------
-            % Optionally low pass the error
-            % % ----------- PEZZOLI -----------
+
+            lim = floor(win_len./pitch_periods(n)).*pitch_periods(n);
+            power(n) = (1/lim).*(frame_errors(n, 1:lim) * frame_errors(n, 1:lim).');
+            gains(n) = sqrt(power(n)*pitch_periods(n));
+            
+        else
+            % MSE of frame as excitation gain
+            gains(n) = sqrt(mean(frame_errors(n, :) .^ 2));
+            % gains(n) = r(1) - lpc_coeffs(n, 1:p)*r(2:end);
+            % pred_gain(n) = r(1) / gains(n);
         end
     end
     
-    
-
-    
-
-    % % ----------- PEZZOLI -----------
-    % if voicedIdx(n) == 1
-    %     % Compute the gain for a pitched sound
-    %     lim = floor(winLen./pitch(n)).*pitch(n);
-    %     power(n) = (1/lim).*(e(1:lim)'*e(1:lim));
-    %     gains(n) = sqrt(power(n)*pitch(n));
-    % 
-    % else
-    %     % Compute the gain for unvoiced sounds
-    % 
-    % end
-    % % ----------- PEZZOLI -----------
-    
     % Plots for spectra, error in time and frequency
-    if ismember(n, [42, 80])
+    if ismember(n, plot_idx)
         
         [H, w] = freqz(1, A);   % shaping filter and w axis
         S = fft(frame);         % frame spectrum
         f = (0:M-1)*(fs/M);     % frequency axis (up to fs)
 
         figure()
-        sgtitle("File " + filename_short + ".mp3 - Frame n." + n + " (p = " + p +")")
+        sgtitle("File " + filename + " - Frame n." + n + " (p = " + p +")")
 
         % Spectra comparison
         subplot(3,1,1)
@@ -116,7 +108,7 @@ for n = 1 : n_frames
         hold off
         title("Original spectrum $S$ and LPC approximation $H$")
         xlabel("$f$ [Hz]")
-        ylabel("$|S|$, $|H|$ [dB]")
+        ylabel("$|S_n|$, $|H|$ [dB]")
         grid on
         xlim([0 fs/2])
         legend("Original spectrum", "Shaping filter approximation")
@@ -144,12 +136,12 @@ for n = 1 : n_frames
     end
 
     % Plots time frame and spectra
-    if ismember(n, [42, 80])
+    if ismember(n, plot_idx)
         figure()
-        sgtitle("File " + filename_short + ".mp3 - Frame n." + n)
+        sgtitle("File " + filename + " - Frame n." + n)
 
         % Frame in time
-        subplot(1, 2, 1)
+        subplot(2, 1, 1)
         plot(t, frame)
         xlabel("$t$ [ms]")
         ylabel("$s_n$")
@@ -157,17 +149,16 @@ for n = 1 : n_frames
         xlim([min(t) max(t)])
 
         % Frame in frequency
-        subplot(1, 2, 2)
+        subplot(2, 1, 2)
         plot(f(1:M/2), db(abs(S(1:M/2))))
         xlabel("$f$ [Hz]")
-        ylabel("$|S|$ [dB]")
+        ylabel("$|S_n|$ [dB]")
         grid on
         xlim([0 fs/2])
-        legend("Original spectrum", "Shaping filter approximation")
     end
 end
 
 %% Save encoded data
-save("lpc10_" + filename_short + ".mat", 'filename_short', 'fs', 'M', 'n_frames', 'A', 'lpc_coeffs', 'gains', 'pitch_periods', 'is_voiced');
+save("lpc10_encoding.mat", 'fs', 'M', 'n_frames', 'lpc_coeffs', 'gains', 'pitch_periods', 'is_voiced');
 disp("Encoding complete");
 disp("================================");
