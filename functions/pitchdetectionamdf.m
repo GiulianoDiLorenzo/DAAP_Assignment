@@ -14,19 +14,19 @@ function pitch = pitchdetectionamdf(e)
 % DAAP HW1 2025
 % Mirco Pezzoli
 
-winLen = length(e);
-len =length(e);
-lags = winLen;
-amd = zeros(1,lags);
-e = [e; zeros(lags,1)];
-for k=1:lags
-    for j=1:len
-        % see equation 6 of reference
-        amd(k) = amd(k) + abs(e(j) - e(j+k));
+    winLen = length(e);
+    len =length(e);
+    lags = winLen;
+    amd = zeros(1,lags);
+    e = [e; zeros(lags,1)];
+    for k=1:lags
+        for j=1:len
+            % see equation 6 of reference
+            amd(k) = amd(k) + abs(e(j) - e(j+k));
+        end
+        amd(k) = amd(k) / len;
     end
-    amd(k) = amd(k) / len;
-end
-pitch = find(amd == min(amd(25:80)));
+    pitch = find(amd == min(amd(25:80)));
 end
 
 
