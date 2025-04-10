@@ -36,7 +36,6 @@ filename = input("Choose file name (with right extension): ", "s");
 
 disp("================================");
 disp("Reading: " + filename);
-disp("================================");
 
 [s, sr] = audioread("input/" + filename);  % read audio file
 s = mean(s, 2);                 % from stereo to mono
@@ -44,21 +43,65 @@ fs = 8e3;                       % work with sampling rate 8 KHz
 s = resample(s, fs, sr);        % resampling original audio
 s = s./max(abs(s));             % normalization
 
+disp("Reading complete");
+disp("================================");
+
+plot_bool = false;      % plots images (use a.mp3)
+
 %% LPC encoding
 encoder;
 
 %% LPC decoding
 decoder;
 
-% soundsc(sRec, fs);
+%% Comparison and results
+% soundsc(s, fs);       % original
+% soundsc(s_rec, fs);   % synthesized
 
-% Plot audio file
-t = (0 : length(s)-1) / fs;     % time axis for audio file
-figure()
-plot(t,s)
-title(filename)
-xlabel("$t$ [s]")
-ylabel("$s$")
-xlim([min(t) max(t)])
-ylim([-1 1])
-grid on
+% ------------------ PLOTS SECTION ------------------
+if plot_bool
+    % Plot audio file
+    figure(999)
+    sgtitle("File " + filename + " - Waveforms and spectra")
+
+    t = (0 : length(s)-1) / fs;
+    subplot(2, 2, 1)
+    plot(t,s)
+    title("Original file - time domain")
+    xlabel("$t$ [s]")
+    ylabel("$s$")
+    xlim([min(t) max(t)])
+    ylim([-1 1])
+    grid on
+        
+    N = length(s);
+    S = fft(s);
+    f = (0:N-1) * (fs / N);
+    subplot(2, 2, 2)
+    plot(f(1:floor(N/2)), db(abs(S(1:floor(N/2)))))
+    title("Original file - frequency domain")
+    xlabel("$f$ [Hz]")
+    ylabel("$|S|$ [dB]")
+    grid on
+    
+    t = (0:length(s_rec)-1) / fs;
+    subplot(2, 2, 3)
+    plot(t, s_rec);
+    title("Synthesized file - time domain")
+    xlabel("$t$ [s]")
+    ylabel("$\hat{s}$")
+    xlim([min(t) max(t)])
+    ylim([-1 1])
+    grid on
+    
+    N = length(s_rec);
+    S = fft(s_rec);
+    f = (0:N-1) * (fs / N);
+    subplot(2, 2, 4)
+    plot(f(1:floor(N/2)), db(abs(S(1:floor(N/2)))));
+    title("Synthesized file - frequency domain")
+    xlabel("$f$ [Hz]")
+    ylabel("$|\hat{S}|$ [dB]")
+    grid on
+end
+% ------------------ PLOTS SECTION ------------------
