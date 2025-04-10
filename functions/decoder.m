@@ -5,29 +5,14 @@
 %
 % The following script synthesize an audio file
 % starting from the LPC-10 encoding that includes
-% ['fs', 'M', 'n_frames', 'a', 'lpc_coeffs', 'gains', 'pitch_periods', 'is_voiced']
-
-%% Load the encoded data
-% % Load the encoded parameters:
-% load("lpc10_" + filename_short + ".mat");
+% ['fs', 'win_len', 'hop_size', 'n_frames', 'lpc_coeffs', 'gains', 'pitch_periods', 'is_voiced']
 
 %% Generate excitation signal
 % Generate train of impulses (voiced) or white noise (unvoiced)
-u = generateexcitationsignal(is_voiced, gains, pitch_periods, M);
+u = generateexcitationsignal(is_voiced, gains, pitch_periods, win_len);
 
-% Plot excitation signals
-figure; 
-subplot(2,1,1);
-plot(t, u(42, :)); % frame 80
-title('Excitation Signal for Frame 42');
-xlabel("$t$ [ms]")
-subplot(2,1,2);
-plot(t, u(80, :)); % frame 42
-title('Excitation Signal for Frame 80');
-xlabel("$t$ [ms]")
-
-% Pre-allocate the reconstructed signal.
-s_synth = zeros(n_frames * M, 1);
+% Memory allocation for the reconstructed signal
+s_synth = zeros((n_frames - 1)*hop_size + win_len, 1);
 
 %% Decode audio signal
 disp("================================");
@@ -52,71 +37,52 @@ for n = 1:n_frames
     frame_synth = filter(1, A, u(n, :).');
     
     % Place synthesized frame into right output position
-    s_synth((n-1)*M + 1 : (n-1)*M + M) = frame_synth;
+    s_synth((n-1)*hop_size + 1 : (n-1)*hop_size + win_len) = frame_synth .* win;
 
-    % Plots time frame and spectra
-    if ismember(n, plot_idx)
-        figure()
-        sgtitle("File " + filename + " - Reconstructed frame n." + n)
-
-        % Frame in time
-        t = (0 : length(frame_synth)-1) / fs;     % time axis for audio file
-        subplot(2, 1, 1)
-        plot(t, frame_synth)
-        xlabel("$t$ [ms]")
-        ylabel("$\hat{s}_n$")
-        grid on
-        xlim([min(t) max(t)])
-
-        % Frame in frequency
-        S = fft(frame_synth);   % frame spectrum
-        f = (0:M-1)*(fs/M);     % frequency axis (up to fs)
-        subplot(2, 1, 2)
-        plot(f(1:M/2), db(abs(S(1:M/2))))
-        xlabel("$f$ [Hz]")
-        ylabel("$|\hat{S}_n|$ [dB]")
-        grid on
-        xlim([0 fs/2])
-    end
+    % ------------------ PLOTS SECTION ------------------
+    if plot_bool
+        if ismember(n, plot_idx)
+            % Plots time frame and spectra - FIGURE N+1
+            figure(n+1)
+            
+            % Frame in time
+            t = (0 : length(frame_synth)-1) / fs;
+            subplot(2, 2, 3)
+            plot(t, frame_synth)
+            title("Reconstructed frame - time domain")
+            xlabel("$t$ [ms]")
+            ylabel("$\hat{s}_n$")
+            grid on
+            xlim([min(t) max(t)])
     
-    % % Plot only frame 40 and frame 84:
-    % if ismember(n, [42, 80])
-    %     figure;
-    %     t = (0:1/fs:(M-1)/fs);  % time axis for one frame
-    %     plot(t, frame_synth);
-    %     title(sprintf('Synthesized Frame %d', n));
-    %     xlabel('Time (s)');
-    %     ylabel('Amplitude');
-    %     grid on;
-    % end
+            % Frame in frequency
+            S = fft(frame_synth);
+            f = (0:win_len-1)*(fs/win_len);
+            subplot(2, 2, 4)
+            plot(f(1:win_len/2), db(abs(S(1:win_len/2))))
+            title("Reconstructed frame - frequency domain")
+            xlabel("$f$ [Hz]")
+            ylabel("$|\hat{S}_n|$ [dB]")
+            grid on
+            xlim([0 fs/2])
+    
+            % Plot excitation signals - FIGURE N+2
+            figure(n+2) 
+            subplot(2,1,2);
+            plot(t, u(n, :));
+            title("Excitation signal")
+            xlabel("$t$ [ms]")
+            ylabel("$e'$")
+            grid on
+            xlim([min(t) max(t)])
+        end
+    end
+    % ------------------ PLOTS SECTION ------------------
 end
 
-% A de-emphasis filter is applied to reverse the pre-emphasis done at the encoder.
-% b_deemp = abs([1, -0.975]);
+% De-emphasis filtering, reverse of the pre-emphasis in the encoder
 s_rec = filter(abs(b), 1, s_synth);
 s_rec = s_rec ./ max(s_rec);
-
-% Create a time axis for the reconstructed signal:
-t = (0:length(s_rec)-1) / fs;  % fs is the sampling frequency
-
-% Plot the time-domain signal:
-figure;
-plot(t, s_rec);
-xlabel('Time (s)');
-ylabel('Amplitude');
-title('Reconstructed Speech Signal');
-
-% Optionally, plot the frequency spectrum:
-N = length(s_rec);
-S = fft(s_rec);
-f = (0:N-1) * (fs / N);
-figure;
-plot(f(1:floor(N/2)), abs(S(1:floor(N/2))));
-xlabel('Frequency (Hz)');
-ylabel('Magnitude');
-title('Spectrum of Reconstructed Signal');
-
-
 
 disp("Decoding complete");
 disp("================================");
