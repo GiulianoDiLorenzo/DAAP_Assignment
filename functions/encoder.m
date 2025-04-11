@@ -11,10 +11,11 @@
 b = [1, -0.975];        % denominator coefficients
 s = filter(b, 1, s);
 
-% Hanning windowing (window length 256 samples, 50% overlap)
-win_len = 256;      
-hop_size = win_len/2;
-win = hanning(win_len, "periodic");
+% Hamming window
+M = 256;
+win_len = M;
+hop_size = M;
+win = hamming(win_len);
 n_frames = floor((length(s) - win_len)/hop_size) + 1;
 
 % LPC model parameters

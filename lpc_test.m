@@ -46,7 +46,6 @@ s = s./max(abs(s));             % normalization
 disp("Reading complete");
 disp("================================");
 
-plot_bool = false;      % plots images (use a.mp3)
 
 %% LPC encoding
 encoder;
@@ -55,9 +54,6 @@ encoder;
 decoder;
 
 %% Comparison and results
-% soundsc(s, fs);       % original
-% soundsc(s_rec, fs);   % synthesized
-
 % ------------------ PLOTS SECTION ------------------
 if plot_bool
     % Plot audio file
@@ -105,3 +101,21 @@ if plot_bool
     grid on
 end
 % ------------------ PLOTS SECTION ------------------
+
+disp("================================");
+disp("Player: " + filename);
+
+if lower(input("Would you like to play the original signal? (y/n): ", 's')) == 'y'
+    disp("Playing the original file")
+    soundsc(s, fs);
+    pause(length(s) / fs);
+end
+
+if lower(input("Would you like to play the synthesized signal? (y/n): ", 's')) == 'y'
+    disp("Playing the synthesized file")
+    soundsc(s_rec, fs);
+    pause(length(s_rec) / fs);
+end
+
+disp("Player complete");
+disp("================================");

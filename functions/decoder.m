@@ -11,8 +11,6 @@
 % Generate train of impulses (voiced) or white noise (unvoiced)
 u = generateexcitationsignal(is_voiced, gains, pitch_periods, win_len);
 
-% Memory allocation for the reconstructed signal
-s_synth = zeros((n_frames - 1)*hop_size + win_len, 1);
 
 %% Decode audio signal
 disp("================================");
@@ -28,13 +26,13 @@ for n = 1:n_frames
     
     % Whitening filter coefficients
     A = [1, -lpc_coeffs(n, 1:p)];
-        
+   
     % Shaping filtering H
     frame_synth = filter(1, A, u(n, :).');
     
-    % Place synthesized frame into right output position (and overlaps accordingly)
-    s_synth((n-1)*hop_size + 1 : (n-1)*hop_size + win_len) = frame_synth .* win + ...
-        s_synth((n-1)*hop_size + 1 : (n-1)*hop_size + win_len);
+    % Place synthesized frame into right output position
+    s_synth((n-1)*hop_size + 1 : (n-1)*hop_size + win_len) = frame_synth;
+
 
     % ------------------ PLOTS SECTION ------------------
     if plot_bool
@@ -77,7 +75,8 @@ for n = 1:n_frames
     % ------------------ PLOTS SECTION ------------------
 end
 
-% De-emphasis filtering, reverse of the pre-emphasis in the encoder
+% A de-emphasis filter is applied to reverse the pre-emphasis done at the encoder.
+% b_deemp = abs([1, -0.975]);
 s_rec = filter(abs(b), 1, s_synth);
 s_rec = s_rec ./ max(s_rec);
 
