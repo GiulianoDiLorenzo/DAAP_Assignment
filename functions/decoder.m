@@ -28,11 +28,7 @@ for n = 1:n_frames
     
     % Whitening filter coefficients
     A = [1, -lpc_coeffs(n, 1:p)];
-    
-    % Excitation for frame n
-    % u(n, :).'
-    % column vector of length M
-    
+        
     % Shaping filtering H
     frame_synth = filter(1, A, u(n, :).');
     
