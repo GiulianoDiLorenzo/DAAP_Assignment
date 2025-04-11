@@ -36,8 +36,9 @@ for n = 1:n_frames
     % Shaping filtering H
     frame_synth = filter(1, A, u(n, :).');
     
-    % Place synthesized frame into right output position
-    s_synth((n-1)*hop_size + 1 : (n-1)*hop_size + win_len) = frame_synth .* win;
+    % Place synthesized frame into right output position (and overlaps accordingly)
+    s_synth((n-1)*hop_size + 1 : (n-1)*hop_size + win_len) = frame_synth .* win + ...
+        s_synth((n-1)*hop_size + 1 : (n-1)*hop_size + win_len);
 
     % ------------------ PLOTS SECTION ------------------
     if plot_bool
