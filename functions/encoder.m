@@ -14,7 +14,7 @@ s = filter(b, 1, s);
 % Hanning windowing (window length 256 samples, 50% overlap)
 win_len = 256;      
 hop_size = win_len/2;
-win = hanning(win_len);
+win = hanning(win_len, "periodic");
 n_frames = floor((length(s) - win_len)/hop_size) + 1;
 
 % LPC model parameters
@@ -67,13 +67,13 @@ for n = 1 : n_frames
         % voiced vs unvoiced frame
         if is_voiced(n)
             % Low-pass at 800 Hz for pitched frames
-            frame_errors(n, :) = lowpass(frame_errors(n, :), 800, fs);
+            lp_error = lowpass(frame_errors(n, :), 800, fs);
 
             % Pitch and gain computation after LPF
-            pitch_periods(n) = pitchdetectionamdf(frame_errors(n, :).');
+            pitch_periods(n) = pitchdetectionamdf(lp_error.');
 
             lim = floor(win_len./pitch_periods(n)).*pitch_periods(n);
-            power(n) = (1/lim).*(frame_errors(n, 1:lim) * frame_errors(n, 1:lim).');
+            power(n) = (1/lim).*(lp_error(1:lim) * lp_error(1:lim).');
             gains(n) = sqrt(power(n)*pitch_periods(n));
             
         else
