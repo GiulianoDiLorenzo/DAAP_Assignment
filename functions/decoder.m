@@ -11,6 +11,8 @@
 % Generate train of impulses (voiced) or white noise (unvoiced)
 u = generateexcitationsignal(is_voiced, gains, pitch_periods, win_len);
 
+% Memory allocation for the reconstructed signal
+s_synth = zeros((n_frames - 1)*hop_size + win_len, 1);
 
 %% Decode audio signal
 disp("================================");
