@@ -8,7 +8,7 @@
 
 %% Define parameters
 % Apply a pre-emphasis HPF (freqz(b,1) to plot transfer function)
-b = [1, -0.975];        % denominator coefficients
+b = [1, -0.975];
 s = filter(b, 1, s);
 
 % Hamming window
@@ -28,14 +28,14 @@ frame_errors = zeros(n_frames, win_len);
 [is_voiced, ~] = voicedframedetection(s, win, hop_size);
 
 % Custom plots
-userChoice = input('Would you like to plot specific frames? (y/n): ', 's');
-if lower(userChoice) == 'y'
+if lower(input('Would you like to plot specific frames? (y/n): ', 's')) == 'y'
     plot_bool = true;
-    plot_idx = input('Enter frame numbers to plot (e.g. [42, 82]): ');
-    invalidFrames = plot_idx(plot_idx > n_frames);
-    if ~isempty(invalidFrames)
+    plot_idx = input(['Enter frame numbers to plot (e.g. [42, 82], ' ...
+        'please choose frame numbers with distance >= 3 and avoid 999): ']);
+    invalid_frames = plot_idx(plot_idx > n_frames);
+    if ~isempty(invalid_frames)
         warning('The following frames do not exist (n_frames = %d) and will be ignored: %s', ...
-                n_frames, mat2str(invalidFrames));
+                n_frames, mat2str(invalid_frames));
     end
     plot_idx = plot_idx(plot_idx <= n_frames);
 else
@@ -51,7 +51,7 @@ for n = 1 : n_frames
     % Frame selection and windowing
     frame = s((n-1)*hop_size + 1 : (n-1)*hop_size + win_len) .* win;
 
-    % LPC order
+    % LPC order selection
     if is_voiced(n)
         p = 10;
     else
@@ -60,8 +60,8 @@ for n = 1 : n_frames
 
     % Compute autocorrelation
     r = xcorr(frame, 'biased');  
-    r = r(win_len:end);  % only positive lags
-    r = r(1 : p+1);   % r(0) and first p values
+    r = r(win_len:end);     % only positive lags
+    r = r(1 : p+1);         % r(0) and first p values
 
     % A(z) coefficients using Levinson-Durbin recursion
     [A, ~, ~] = levinson(r, p);
@@ -70,22 +70,22 @@ for n = 1 : n_frames
     if any(isnan(A))
         % LPC coefficients not updated
         A = zeros(1, p);
-
     else
-        % LPC coefficients, excluding 1
+        % LPC coefficients, excluding 1 and sign change
         lpc_coeffs(n, 1:p) = -A(2:end);
 
         % Prediction error - whitening filtering
         frame_errors(n, :) = filter(A, 1, frame);       
 
-        % voiced vs unvoiced frame
+        % voiced vs unvoiced frame computations
         if is_voiced(n)
-            % Low-pass at 800 Hz for pitched frames
+            % Low-pass at 800 Hz for pitch computation
             lp_error = lowpass(frame_errors(n, :), 800, fs);
 
-            % Pitch and gain computation after LPF
+            % Pitch computation after LPF
             pitch_periods(n) = pitchdetectionamdf(lp_error.');
 
+            % Gain computation using pitch period
             lim = floor(win_len./pitch_periods(n)).*pitch_periods(n);
             power(n) = (1/lim).*(lp_error(1:lim) * lp_error(1:lim).');
             gains(n) = sqrt(power(n)*pitch_periods(n));
@@ -94,7 +94,6 @@ for n = 1 : n_frames
             % MSE of frame as excitation gain
             gains(n) = sqrt(mean(frame_errors(n, :) .^ 2));
             % gains(n) = r(1) - lpc_coeffs(n, 1:p)*r(2:end);
-            % pred_gain(n) = r(1) / gains(n);
         end
     end
     
@@ -102,9 +101,9 @@ for n = 1 : n_frames
     if plot_bool
         if ismember(n, plot_idx)
             % Plots for spectra, error in time and frequency - FIGURE "N"
-            [H, w] = freqz(1, A);   % shaping filter and w axis
-            S = fft(frame);         % frame spectrum
-            f = (0:win_len-1)*(fs/win_len);     % frequency axis (up to fs)
+            [H, w] = freqz(1, A);
+            S = fft(frame); 
+            f = (0:win_len-1)*(fs/win_len);
     
             figure(n)
             sgtitle("File " + filename + " - Frame n." + n + " (p = " + p +")")
@@ -117,34 +116,34 @@ for n = 1 : n_frames
             hold off
             title("Original spectrum $S$ and LPC approximation $H$")
             xlabel("$f$ [Hz]")
-            ylabel("$|S_n|$, $|H|$ [dB]")
+            ylabel("$|S_n|$, $|H_n|$ [dB]")
             grid on
             xlim([0 fs/2])
             legend("Original spectrum", "Shaping filter approximation")
     
             % Error in time
-            t = (0 : 1/fs : 1/fs*(win_len-1))*10e3;   % [ms] time axis
+            t = (0 : 1/fs : 1/fs*(win_len-1))*1e3;
             subplot(3,1,2)
             plot(t, frame_errors(n, :))
             title("Prediction error - time domain")
             xlabel("$t$ [ms]")
-            ylabel("$e$")
+            ylabel("$e_n$")
             grid on
             xlim([min(t) max(t)])
     
             % Error in frequency
-            E = fft(frame_errors(n, :));    % error spectrum
+            E = fft(frame_errors(n, :));
             subplot(3,1,3)
             plot(f(1:win_len/2), db(abs(E(1:win_len/2))))
             title("Prediction error - frequency domain")
             xlabel("$f$ [Hz]")
-            ylabel("$|E|$ [dB]")
+            ylabel("$|E_n|$ [dB]")
             grid on
             xlim([0 fs/2])
         
             % Plots time frame and spectra - FIGURE N+1
             figure(n+1)
-            sgtitle("File " + filename + " - Frame n." + n)
+            sgtitle("File " + filename + " - Frame n." + n + " (p = " + p +")")
     
             % Frame in time
             subplot(2, 2, 1)
@@ -166,20 +165,20 @@ for n = 1 : n_frames
     
             % Plots prediction error and excitation (decoder) - FIGURE N+2
             figure(n+2)
-            sgtitle("File " + filename + " - Frame n." + n)
+            sgtitle("File " + filename + " - Frame n." + n + " (p = " + p +")")
     
             % Error in time
-            t = (0 : 1/fs : 1/fs*(win_len-1))*10e3;   % [ms] time axis
+            t = (0 : 1/fs : 1/fs*(win_len-1))*1e3;
             subplot(2,1,1)
             plot(t, frame_errors(n, :))
             title("Prediction error - time domain")
             xlabel("$t$ [ms]")
-            ylabel("$e$")
+            ylabel("$e_n$")
             grid on
             xlim([min(t) max(t)])
         end
     end
-    % ------------------ PLOTS SECTION ------------------
+    % ------------------ END PLOTS SECTION ------------------
 end
 
 %% Save encoded data

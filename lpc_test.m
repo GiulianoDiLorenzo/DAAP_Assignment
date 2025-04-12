@@ -46,7 +46,6 @@ s = s./max(abs(s));             % normalization
 disp("Reading complete");
 disp("================================");
 
-
 %% LPC encoding
 encoder;
 
@@ -100,7 +99,7 @@ if plot_bool
     ylabel("$|\hat{S}|$ [dB]")
     grid on
 end
-% ------------------ PLOTS SECTION ------------------
+% ------------------ END PLOTS SECTION ------------------
 
 disp("================================");
 disp("Player: " + filename);

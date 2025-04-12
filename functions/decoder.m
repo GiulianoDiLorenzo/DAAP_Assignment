@@ -19,7 +19,7 @@ disp("================================");
 disp("Decoding: " + filename);
 
 for n = 1:n_frames
-    % LPC order
+    % LPC order selection
     if is_voiced(n)
         p = 10;
     else
@@ -29,12 +29,11 @@ for n = 1:n_frames
     % Whitening filter coefficients
     A = [1, -lpc_coeffs(n, 1:p)];
    
-    % Shaping filtering H
+    % Frame synthesis - shaping filtering H
     frame_synth = filter(1, A, u(n, :).');
     
     % Place synthesized frame into right output position
     s_synth((n-1)*hop_size + 1 : (n-1)*hop_size + win_len) = frame_synth;
-
 
     % ------------------ PLOTS SECTION ------------------
     if plot_bool
@@ -43,7 +42,7 @@ for n = 1:n_frames
             figure(n+1)
             
             % Frame in time
-            t = (0 : length(frame_synth)-1) / fs;
+            t = (0 : length(frame_synth)-1)*1e3 / fs;
             subplot(2, 2, 3)
             plot(t, frame_synth)
             title("Reconstructed frame - time domain")
@@ -69,16 +68,15 @@ for n = 1:n_frames
             plot(t, u(n, :));
             title("Excitation signal")
             xlabel("$t$ [ms]")
-            ylabel("$e'$")
+            ylabel("$e'_n$")
             grid on
             xlim([min(t) max(t)])
         end
     end
-    % ------------------ PLOTS SECTION ------------------
+    % ------------------ END PLOTS SECTION ------------------
 end
 
-% A de-emphasis filter is applied to reverse the pre-emphasis done at the encoder.
-% b_deemp = abs([1, -0.975]);
+% De-emphasis filtering to reverse pre-emphasis of encoding
 s_rec = filter(abs(b), 1, s_synth);
 s_rec = s_rec ./ max(s_rec);
 
