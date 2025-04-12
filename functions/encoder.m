@@ -28,7 +28,20 @@ frame_errors = zeros(n_frames, win_len);
 [is_voiced, ~] = voicedframedetection(s, win, hop_size);
 
 % Custom plots
-plot_idx = [42, 82];
+userChoice = input('Would you like to plot specific frames? (y/n): ', 's');
+if lower(userChoice) == 'y'
+    plot_bool = true;
+    plot_idx = input('Enter frame numbers to plot (e.g. [42, 82]): ');
+    invalidFrames = plot_idx(plot_idx > n_frames);
+    if ~isempty(invalidFrames)
+        warning('The following frames do not exist (n_frames = %d) and will be ignored: %s', ...
+                n_frames, mat2str(invalidFrames));
+    end
+    plot_idx = plot_idx(plot_idx <= n_frames);
+else
+    plot_bool = false;
+    plot_idx = [];
+end
 
 %% Estimate LPC coefficients
 disp("================================");
